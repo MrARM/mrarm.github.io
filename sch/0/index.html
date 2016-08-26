@@ -5,7 +5,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.terminal/0.10.12/js/jquery.terminal.min.js"></script>
         <link rel="stylesheet" type="text/css" href="term.css">
         <script>
-            $('#termi').terminal(function(command, term) {
+            $('body').terminal(function(command, term) {
                 if (command == 'getmein') {
                     term.echo("Please wait, Jordan Bush...");
                 } else {
@@ -15,7 +15,6 @@
         </script>
     </head>
     <body>
-        <div id="term" class="term"></div>
     </body>
 </html>
     
