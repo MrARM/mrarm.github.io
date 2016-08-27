@@ -9,5 +9,5 @@ jQuery(document).ready(function($) {
                 } else {
                     term.echo('unknown command, use help');
                 }
-            }, { prompt: 'vault>', name: 'sch0', greetings: atob(grt) });
+            }, { prompt: 'vault>', name: 'sch0', greeting: atob(grt) });
         });
