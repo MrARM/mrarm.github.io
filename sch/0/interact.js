@@ -20,6 +20,8 @@ jQuery(document).ready(function($) {
                     term.echo(makeid());
                     term.echo(makeid());
                     term.echo(makeid());
+                    term.echo(makeid());
+                    term.echo(makeid());
                 } else if(command == 'help'){
                             term.echo('exit - Exit the app\n');
                             term.echo('getmein - Achieve access\n');
