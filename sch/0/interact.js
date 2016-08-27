@@ -3,6 +3,23 @@ jQuery(document).ready(function($) {
             $('body').terminal(function(command, term) {
                 if (command == 'getmein') {
                     term.echo("Please wait, Jordan Bush...");
+                    wait(2000);
+                    term.echo("=------------");
+                    wait(267);
+                    term.echo("==-----------");
+                    wait(700);
+                    term.echo("==-----------");
+                    wait(8400);
+                    term.echo("============-");
+                     wait(2000);
+                    term.echo("=============");
+                    term.echo("Done!");
+                    term.echo(makeid());
+                    term.echo(makeid());
+                    term.echo(makeid());
+                    term.echo(makeid());
+                    term.echo(makeid());
+                    term.echo(makeid());
                 } else if(command == 'help'){
                             term.echo('exit - Exit the app\n');
                             term.echo('getmein - Achieve access\n');
