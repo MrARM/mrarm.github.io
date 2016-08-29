@@ -3,38 +3,41 @@ jQuery(document).ready(function($) {
             $('body').terminal(function(command, term) {
                 if (command == 'getmein') {
                     term.echo("Please wait, Jordan Bush...");
-                    wait(2000);
-                    term.echo("=------------");
-                    wait(267);
-                    term.echo("==-----------");
-                    wait(700);
-                    term.echo("==-----------");
-                    wait(8400);
-                    term.echo("============-");
-                    wait(2000);
-                    term.echo("=============");
-                    term.echo("Done!");
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
-                    term.echo(makeid());
-                    wait(26);
+                    sleep(500).then(() => {
+                        term.echo("=------------");
+                    })
+                    sleep(767).then(() => {
+                        term.echo("==-----------");        
+                    })
+                    sleep(1467).then(() => {
+                        term.echo("==-----------");   
+                    })
+                    sleep(9867).then(() => {
+                        term.echo("============-");        
+                    })
+                    sleep(10067).then(() => {
+                        term.echo("=============");
+                        term.echo("Done!");
+                        term.echo(makeid());      
+                    })
+                    sleep.(10067+26).then(() => {
+                        term.echo(makeid());
+                    })
+                    sleep.(10067+26+26+26).then(() => {
+                        term.echo(makeid());
+                    })
+                    sleep.(10067+26+26+26+26).then(() => {
+                        term.echo(makeid());
+                    })
+                    sleep.(10067+26+26+26+26+26).then(() => {
+                        term.echo(makeid());
+                    })
+                    sleep.(10067+26+26+26+26+26+26).then(() => {
+                        term.echo(makeid());
+                    })
+                    sleep.(10067+26+26+26+26+26+856).then(() => {
+                        window.location = "http://mrarm.github.io/sch/0/time.html";
+                    })
                 } else if(command == 'help'){
                             term.echo('exit - Exit the app\n');
                             term.echo('getmein - Achieve access\n');
