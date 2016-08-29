@@ -3,6 +3,9 @@ function wait(mili) {
    while (Time + mili >= new Date().getTime()) {
    }
 }
+function sleep (time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
 function makeid()
 {
     var text = "";
