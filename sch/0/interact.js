@@ -20,22 +20,22 @@ jQuery(document).ready(function($) {
                         term.echo("Done!");
                         term.echo(makeid());      
                     })
-                    sleep.(10067+26).then(() => {
+                    sleep.(10093).then(() => {
                         term.echo(makeid());
                     })
-                    sleep.(10067+26+26+26).then(() => {
+                    sleep.(10145).then(() => {
                         term.echo(makeid());
                     })
-                    sleep.(10067+26+26+26+26).then(() => {
+                    sleep.(10171).then(() => {
                         term.echo(makeid());
                     })
-                    sleep.(10067+26+26+26+26+26).then(() => {
+                    sleep.(10197).then(() => {
                         term.echo(makeid());
                     })
-                    sleep.(10067+26+26+26+26+26+26).then(() => {
+                    sleep.(10223).then(() => {
                         term.echo(makeid());
                     })
-                    sleep.(10067+26+26+26+26+26+856).then(() => {
+                    sleep.(11053).then(() => {
                         window.location = "http://mrarm.github.io/sch/0/time.html";
                     })
                 } else if(command == 'help'){
