@@ -17,5 +17,5 @@ function makeid()
     return text;
 }
 $(window).load(function() {
-	$(".loader").fadeOut("slow");
+	$(".loader").hide;
 })
