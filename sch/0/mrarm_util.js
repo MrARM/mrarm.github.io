@@ -18,4 +18,6 @@ function makeid()
 }
 $(window).load(function() {
 	$(".loader").hide;
+	var time = d.toDateString();
+	$('#curtime').html(time);
 })
