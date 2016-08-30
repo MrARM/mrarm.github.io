@@ -18,7 +18,4 @@ function makeid()
 }
 $(window).load(function() {
 	$(".loader").hide;
-	var d = new Date();
-	var time = d.toDateString();
-	document.getElementById("curtime").innerHTML = time;
 })
