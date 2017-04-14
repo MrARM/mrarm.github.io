@@ -1,0 +1,31 @@
+Manifest-Version: 1.0
+MIDlet-Version: 3.90.0
+MIDlet-Jar-Size: 722352
+RIM-COD-URL-4: TagReaderBB-4.cod
+RIM-COD-URL-3: TagReaderBB-3.cod
+RIM-COD-SHA1-4: 6c 41 e2 ad 96 52 b7 d1 1c a0 71 bd 1e 36 bf 61 e6 44 08 65
+RIM-COD-URL-2: TagReaderBB-2.cod
+RIM-COD-SHA1-3: 38 15 cc db 9d 50 af eb 5d d8 c9 9d 4b db 3f ad 0b a1 1c 39
+MicroEdition-Configuration: CLDC-1.1
+MIDlet-Jar-URL: TagReaderBB.jar
+RIM-COD-Module-Dependencies: net_rim_cldc,net_rim_locationapi,net_rim_pdap,net_rim_xml,net_rim_xml_org,net_rim_bbapi_invoke,net_rim_bbapi_browser,net_rim_os
+RIM-COD-SHA1-2: 00 4e 42 d9 ab ed ec a4 6a ad b6 20 78 88 0e 1f 72 b0 58 4f
+RIM-COD-URL-1: TagReaderBB-1.cod
+RIM-COD-Size-4: 56132
+RIM-COD-SHA1-1: 72 83 6d 1b a6 99 8c c6 a1 e3 ce b0 d0 ae a6 1c 49 17 1e b2
+RIM-COD-Size-3: 55616
+RIM-COD-Size-2: 27092
+RIM-MIDlet-Flags-1: 0
+RIM-COD-Size-1: 94308
+RIM-COD-Module-Name: TagReaderBB
+RIM-COD-Size: 103520
+MIDlet-Name: TagReaderBB
+RIM-COD-Creation-Time: 1298077995
+MIDlet-1: TagReader,../../../res/icn_tag_launcher.png,
+RIM-COD-URL: TagReaderBB.cod
+RIM-TouchCompatibilityMode: false
+MIDlet-Description: Microsoft Tag Reader
+RIM-COD-SHA1: 5f f2 92 70 19 80 5f 21 57 36 b2 7c f6 61 79 73 5d ef f6 68
+MicroEdition-Profile: MIDP-2.0
+MIDlet-Vendor: Microsoft
+RIM-TouchCompatibilityMode=false
