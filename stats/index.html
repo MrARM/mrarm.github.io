@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<!--
+vanilla minecraft server statistics 
+source: https://github.com/phiresky/minecraft-stats
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minecraft server stats</title>
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/chosen/1.1.0/chosen.css">
+<link rel="stylesheet" href="static/jquery.treetable.css">
+<link rel="stylesheet" href="static/jquery.treetable.theme.default.css">
+<style>
+#chart {
+	border: 1px solid lightgray;
+	height: 400px;
+}
+</style>
+
+<script src="static/jquery.min.js"></script>
+<script src="static/jquery.treetable.js"></script>
+<script src="static/highcharts.js"></script>
+<script src="static/chosen.jquery.min.js"></script>
+
+<div class="container-fluid">
+	<div class="page-header nonlight">
+		<h2>Stats</h2>
+	</div>
+	<h3 class="nonlight">Graph</h3>
+	<div id="options" role="form">
+		<div class="form-group">
+			<label for="attribute">Stats:</label>
+			<select multiple id="attribute" data-placeholder="Select a stat" class="form-control"></select>
+		</div>
+		<div class="checkbox">
+			<label>
+				<input type="checkbox" id="separate">Separate Axes
+			</label>
+		</div>
+		<div class="form-group">
+			<button id="random" class="btn btn-default">Random Stat</button>
+		</div>
+	</div>
+	<div id="chart"></div>
+	<h3 class="nonlight">All Stats</h3>
+	<div id="table" class="nonlight table-responsive"></div>
+	<hr class="nonlight"><footer class="nonlight"><a href="https://github.com/phiresky/minecraft-stats">Source on Github</a></footer>
+</div>
+
+<script src="bin/minecraftstats.js"></script>
