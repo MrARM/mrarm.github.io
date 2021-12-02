@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Sondehub Balloon query</title>
+  <link rel='stylesheet' href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css'><link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<h2>SondeHub Balloon Radius Display</h2>
+Lat: <input type="number" id="lat" value="39"> Lon: <input type="number" id="lon" value="-94"><br>
+
+Distance: <input type="number" id="distance" value="25"> Kilometers<br>
+
+Time: <input type="number" id="days" value="25"> days <button onClick="query();">Query</button>
+
+
+<div id="map"></div>
+<!-- partial -->
+  <script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'></script><script  src="./script.js"></script>
+
+</body>
+</html>
