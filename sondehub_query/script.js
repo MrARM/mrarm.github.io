@@ -31,6 +31,8 @@ const query = () => {
     }
   });
 
+  const sondesToPredict = [];
+
   const lat = parseFloat(document.getElementById("lat").value);
   const lon = parseFloat(document.getElementById("lon").value);
   const dist = parseInt(document.getElementById("distance").value) * 1000; // SH uses meters.
@@ -44,10 +46,10 @@ const query = () => {
 
       console.log(`Sonde count: ${Object.entries(data).length}`);
       for (const [ser, dat] of Object.entries(data)) {
-        // SH seems to return anything, I only want things nearish the ground.
-        if (dat.alt > 5000) {
-          continue;
-        }
+        // ~~SH seems to return anything, I only want things nearish the ground~~ Changed to show predictions
+        //if (dat.alt > 5000) {
+          //continue;
+        //}
         console.log(`Adding ${ser}`);
         const d = new Date(dat.time_received);
 
@@ -58,6 +60,7 @@ const query = () => {
           marker.setIcon(IgroundSonde);
         } else {
           marker.setIcon(IflySonde);
+          sondesToPredict.push(dat); // Put sonde in prediction list
         }
         marker.bindPopup(
           `${dat.type}:${ser}<br>${dat.alt}m<br>${d.toLocaleTimeString(
@@ -65,32 +68,47 @@ const query = () => {
             options
           )}<br><a href="https://www.google.com/maps/?q=${dat.lat},${
             dat.lon
-          }&z=15">Google Maps</a><br><button onClick="genPred(${ser})">Predict</button>`
-        );
-      }
-    });
-};
-
-const genPred = (sondeId) => {
-  fetch(`https://api.v2.sondehub.org/predictions?vehicles=${sondeId}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.length > 0) {
-        // Check to make sure the sonde exists
-        const sonde = data[0];
-        const marker = L.marker([sonde.latitude, sonde.longitude], {
-          icon: IgroundPredSonde
-        }).addTo(map);
-        const d = new Date(sonde.time);
-        marker.bindPopup(
-          `${sondeId}<br>${sonde.altitude}m<br>${d.toLocaleTimeString(
-            "en-us",
-            options
-          )}<br><a href="https://www.google.com/maps/?q=${sonde.latitude},${
-            sonde.longitude
           }&z=15">Google Maps</a>`
         );
       }
+
+      // Run predictions on every sonde around
+      const queryVar = sondesToPredict.map(sonde=>sonde.serial).join(',');
+      fetch(`https://api.v2.sondehub.org/predictions?vehicles=${queryVar}`)
+          .then((response) => response.json())
+          .then((data) => {
+            for(const prediction of data){
+              // Match prediction to sonde
+              const originalPos = sondesToPredict.filter(sonde=>sonde.serial === prediction.vehicle)[0];
+              // Only show predictions if the altitude changes by 20 meters
+              // It looks like a lot of orphaned predictions otherwise.
+              //console.log(`${prediction.altitude + 20} > ${originalPos.alt}`);
+              if(prediction.altitude + 20 > originalPos.alt){
+                continue;
+              }
+
+              // Marker
+              const marker = L.marker([prediction.latitude, prediction.longitude], {
+                icon: IgroundPredSonde
+              }).addTo(map);
+              const d = new Date(prediction.time);
+              marker.bindPopup(
+                  `${prediction.vehicle}<br>${prediction.altitude}m<br>${d.toLocaleTimeString(
+                      "en-us",
+                      options
+                  )}<br><a href="https://www.google.com/maps/?q=${prediction.latitude},${
+                      prediction.longitude
+                  }&z=15">Google Maps</a>`
+              );
+
+              // Line to original position
+              const posArr = [
+                  [prediction.latitude, prediction.longitude],
+                  [originalPos.lat, originalPos.lon]
+              ];
+              const line = L.polyline(posArr, {color: 'red', opacity: 0.4}).addTo(map);
+            }
+          });
     });
 };
 

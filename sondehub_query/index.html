@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <title>Sondehub Balloon query</title>
-  <link rel='stylesheet' href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css'><link rel="stylesheet" href="./style.css">
-
+  <link rel='stylesheet' href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css'>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/pure-min.css" integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5" crossorigin="anonymous">
 </head>
 <body>
 <!-- partial:index.partial.html -->
 <h2>SondeHub Balloon Radius Display</h2>
-Lat: <input type="number" id="lat" value="39"> Lon: <input type="number" id="lon" value="-94"><br>
+Lat: <input type="number" id="lat" value="39" class="pure-input-1-2"> Lon: <input type="number" id="lon" value="-94" class="pure-input-1-2"><br>
 
-Distance: <input type="number" id="distance" value="25"> Kilometers<br>
+Distance: <input type="number" id="distance" value="50" class="pure-input-1-2"> Kilometers<br>
 
-Time: <input type="number" id="days" value="25"> days <button onClick="query();">Query</button>
+Time: <input type="number" id="days" value="50" class="pure-input-1-2"> days <button class="pure-button pure-button-primary" onClick="query();">Query</button>
 
 
 <div id="map"></div>
-<!-- partial -->
-  <script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'></script><script  src="./script.js"></script>
 
+<script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'>
+</script><script  src="./script.js"></script>
 </body>
 </html>
