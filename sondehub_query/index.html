@@ -1,25 +1,32 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Sondehub Balloon query</title>
-  <link rel='stylesheet' href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css'>
-  <link rel="stylesheet" href="./style.css">
-  <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/pure-min.css" integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <title>Sondehub Balloon query</title>
+    <link rel='icon' type='image/png' href='https://sondehub.org/img/markers/payload-recovered.png'>
+    <link href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css' rel='stylesheet'>
+    <link href="./style.css" rel="stylesheet">
+    <link crossorigin="anonymous" href="https://unpkg.com/purecss@2.0.6/build/pure-min.css"
+          integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5" rel="stylesheet">
 </head>
 <body>
 <!-- partial:index.partial.html -->
 <h2>SondeHub Balloon Radius Display</h2>
-Lat: <input type="number" id="lat" value="39" class="pure-input-1-2"> Lon: <input type="number" id="lon" value="-94" class="pure-input-1-2"><br>
+Lat: <input class="pure-input-1-2" id="lat" type="number" value="39"> Lon: <input class="pure-input-1-2" id="lon" type="number"
+                                                                                  value="-94"><br>
 
-Distance: <input type="number" id="distance" value="50" class="pure-input-1-2"> Kilometers<br>
+Distance: <input class="pure-input-1-2" id="distance" type="number" value="50"> Kilometers<br>
 
-Time: <input type="number" id="days" value="50" class="pure-input-1-2"> days <button class="pure-button pure-button-primary" onClick="query();">Query</button>
+Time: <input class="pure-input-1-2" id="days" type="number" value="50"> days
+<button class="pure-button pure-button-primary" onClick="query(false);">Query</button>
+<button class="pure-button pure-button-primary" onClick="query(true);">Heatmap</button>
 
 
 <div id="map"></div>
 
-<script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'>
-</script><script  src="./script.js"></script>
+<script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'></script>
+<script src='./heatmap.min.js'></script>
+<script src='https://unpkg.com/leaflet-heatmap@1.0.0/leaflet-heatmap.js'></script>
+<script src="./script.js"></script>
 </body>
 </html>
