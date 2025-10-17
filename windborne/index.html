@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Windborne Missions Map</title>
+  <!--
+    This page uses the Leaflet mapping library together with OpenStreetMap tiles
+    to visualise the locations of missions reported by WindBorne Systems.  On
+    page load the script fetches mission metadata from the public API at
+    https://landed.windbornesystems.com/api/missions and plots each mission on
+    the map.  Marker colour now encodes the mission altitude (low altitudes are
+    blue and high altitudes are red) and marker size/border thickness conveys
+    whether the mission has landed.  A legend in the bottom right corner
+    explains the altitude colour scale and the landing status markers.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    /* Basic page styling */
+    body {
+      margin: 0;
+      font-family: sans-serif;
+    }
+    h1 {
+      margin: 0;
+      padding: 0.5rem;
+      background-color: #004481;
+      color: #ffffff;
+      font-size: 1.5rem;
+    }
+    #map {
+      width: 100%;
+      /* Subtract the height of the header (about 2.5rem) from the viewport
+         height so the map occupies the remaining space.  Use a standard hyphen
+         for the subtraction operator. */
+      height: calc(100vh - 2.5rem);
+    }
+    /* Legend styling */
+    .legend {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 8px;
+      line-height: 1.3em;
+      color: #222;
+      font-size: 0.9rem;
+    }
+    .legend h4 {
+      margin: 0 0 6px 0;
+      font-size: 1rem;
+    }
+    .legend i {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border: 1px solid #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>WindBorne Missions Map</h1>
+  <div id="map"></div>
+  <!-- Load Leaflet library -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  ></script>
+  <script>
+    // Initialise the Leaflet map.  The initial centre and zoom are chosen to
+    // show the entire world so that all missions will be visible when they
+    // load.  Users can zoom and pan as needed.
+    const map = L.map('map').setView([20, 0], 2);
+    // Define base layers for the map.  We provide both the standard
+    // OpenStreetMap layer and a satellite imagery layer (Esri World Imagery).
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    });
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      maxZoom: 19,
+    });
+    // Add the default base layer to the map.
+    osmLayer.addTo(map);
+
+    /*
+      Utility functions for colouring and styling mission markers.  We no longer
+      colour by biome; instead the marker colour encodes altitude (low altitude
+      missions are blue, high altitude missions are red) and marker size
+      encodes whether the mission has landed.  These helper functions are
+      defined within the fetch handler once the altitude range is known.
+    */
+
+    // Utility to convert ISO timestamps into a more readable format.  If the
+    // timestamp is null the function returns 'N/A'.
+    function formatDate(isoString) {
+      if (!isoString) return 'N/A';
+      const date = new Date(isoString);
+      return date.toLocaleString(undefined, { timeZoneName: 'short' });
+    }
+
+    // Fetch mission data from the WindBorne public API and plot it on the map.
+    // In case of network errors the catch handler will log the error.  Note
+    // that this call relies on the API permitting CORS requests from the
+    // current origin.  Should the request fail for CORS reasons the map will
+    // remain empty but no other failures will occur.
+    fetch('https://landed.windbornesystems.com/api/missions')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch mission data: ' + response.status);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        const missions = data.missions || [];
+        // Determine the minimum and maximum altitudes among all missions.
+        let minAlt = Infinity;
+        let maxAlt = -Infinity;
+        // Create separate layer groups for landed and in‑flight missions.  These
+        // groups allow us to toggle their visibility via the layer control.
+        const landedLayer = L.layerGroup();
+        const inflightLayer = L.layerGroup();
+
+        missions.forEach((mission) => {
+          const alt = mission.analysis && typeof mission.analysis.altitude === 'number' ? mission.analysis.altitude : null;
+          if (alt !== null) {
+            if (alt < minAlt) minAlt = alt;
+            if (alt > maxAlt) maxAlt = alt;
+          }
+        });
+        // If no altitudes were present, set a default range to avoid division by zero.
+        if (!isFinite(minAlt) || !isFinite(maxAlt) || minAlt === maxAlt) {
+          minAlt = 0;
+          maxAlt = 1;
+        }
+        // Function to map an altitude value to a colour on a blue-to-red scale.  Low
+        // altitudes appear blue, high altitudes appear red.
+        function getColorForAltitude(alt) {
+          if (typeof alt !== 'number') {
+            return '#999999';
+          }
+          const t = (alt - minAlt) / (maxAlt - minAlt);
+          // clamp t between 0 and 1
+          const clamped = Math.max(0, Math.min(1, t));
+          const hue = 240 - 240 * clamped; // 240° = blue, 0° = red
+          return `hsl(${hue}, 100%, 50%)`;
+        }
+        // Determine marker radius and stroke weight based on landing status.  Landed
+        // missions are rendered with a larger radius and thicker border.
+        function markerStyle(landed, colour) {
+          return {
+            radius: landed ? 7 : 4,
+            fillColor: colour,
+            color: '#000',
+            weight: landed ? 2 : 1,
+            opacity: 1,
+            fillOpacity: 0.6,
+          };
+        }
+        missions.forEach((mission) => {
+          const analysis = mission.analysis || {};
+          const processed = mission.processed || {};
+          const lat = analysis.latitude;
+          const lon = analysis.longitude;
+          // Skip missions without valid coordinates.
+          if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
+            return;
+          }
+          const altitude = analysis.altitude;
+          const colour = getColorForAltitude(altitude);
+          // Determine if the mission has landed.  Use the analysis.landing_detected
+          // flag or landing_time as indicators.
+          const landed = (analysis.landing_detected === true) || !!mission.landing_time;
+          const style = markerStyle(landed, colour);
+          // Create the marker.  It will be added to one of the layer groups
+          // instead of directly to the map so that the groups can be toggled
+          // on/off via the layer control.
+          const marker = L.circleMarker([lat, lon], style);
+          const popupContent = `
+            <strong>${mission.name || 'Unnamed mission'}</strong><br />
+            <em>Biome:</em> ${processed.biome || 'Unknown'}<br />
+            <em>Land:</em> ${processed.landname || 'Unknown'}<br />
+            <em>Launch:</em> ${formatDate(mission.launch_time)}<br />
+            <em>Landing:</em> ${formatDate(mission.landing_time)}<br />
+            <em>Altitude:</em> ${altitude != null ? altitude + ' m' : 'N/A'}<br />
+            <em>Speed:</em> ${analysis.speed != null ? analysis.speed + ' m/s' : 'N/A'}<br />
+            <em>Landed:</em> ${landed ? 'Yes' : 'No'}`;
+          marker.bindPopup(popupContent);
+          // Place marker into the appropriate group based on landing status.
+          if (landed) {
+            landedLayer.addLayer(marker);
+          } else {
+            inflightLayer.addLayer(marker);
+          }
+        });
+
+        // Add both layers to the map by default so all missions are visible.
+        landedLayer.addTo(map);
+        inflightLayer.addTo(map);
+
+        // Create base layer and overlay definitions for the layer control.  The base
+        // layers include the default street map and a satellite imagery option.  The
+        // overlays allow toggling landed versus in‑flight mission markers.
+        const baseLayers = {
+          'Street map': osmLayer,
+          'Satellite imagery': satelliteLayer,
+        };
+        const overlays = {
+          'Landed missions': landedLayer,
+          'In‑flight missions': inflightLayer,
+        };
+        L.control.layers(baseLayers, overlays, { collapsed: false, position: 'topright' }).addTo(map);
+
+        // After plotting all missions build the legend.  The altitude legend uses a
+        // gradient bar to show the mapping from low (blue) to high (red)
+        // altitudes.  A separate section explains the landing status marker sizes.
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function () {
+          const div = L.DomUtil.create('div', 'legend');
+          let html = '<h4>Altitude</h4>';
+          html += '<div style="width:140px;height:10px;background: linear-gradient(to right, hsl(240,100%,50%), hsl(0,100%,50%));"></div>';
+          html += '<div style="display:flex; justify-content: space-between; font-size:0.8rem;"><span>Low</span><span>High</span></div>';
+          html += '<h4>Landing status</h4>';
+          html += '<svg width="14" height="14" style="margin-right:6px;"><circle cx="7" cy="7" r="4" fill="gray" stroke="black" stroke-width="1"></circle></svg>In flight<br />';
+          html += '<svg width="14" height="14" style="margin-right:6px;"><circle cx="7" cy="7" r="7" fill="gray" stroke="black" stroke-width="2"></circle></svg>Landed';
+          div.innerHTML = html;
+          return div;
+        };
+        legend.addTo(map);
+      })
+      .catch((error) => {
+        console.error('Error loading missions:', error);
+      });
+  </script>
+</body>
+</html>
