@@ -189,7 +189,7 @@
           popupHtml += `<em>Mission code:</em> ${processed.code || 'N/A'}<br />`;
           popupHtml += `<em>Tag:</em> ${processed.tag || 'N/A'}<br />`;
           popupHtml += `<em>Location:</em> ${processed.landname || 'Unknown'}<br />`;
-          popupHtml += `<em>Coordinates:</em> <a href="https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}">${latitude || 'Unknown'}, ${longitude || 'Unknown'}</a><br />`;
+          popupHtml += `<em>Coordinates:</em> <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lon}">${lat || 'Unknown'}, ${lon || 'Unknown'}</a><br />`;
           popupHtml += `<em>Biome:</em> ${processed.biome || 'Unknown'}<br />`;
           popupHtml += `<em>Launch time:</em> ${formatDate(mission.launch_time)}<br />`;
           popupHtml += `<em>Landing time:</em> ${formatDate(mission.landing_time)}<br />`;
