@@ -106,7 +106,7 @@
     // that this call relies on the API permitting CORS requests from the
     // current origin.  Should the request fail for CORS reasons the map will
     // remain empty but no other failures will occur.
-    fetch('https://landed.windbornesystems.com/api/missions')
+    fetch('https://api.codetabs.com/v1/proxy?quest=https://landed.windbornesystems.com/api/missions')
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch mission data: ' + response.status);
