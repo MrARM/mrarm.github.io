@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<!-- This is something dirty I vibe coded up for a snowstorm in 2026. It uses the public data APIs but provides more details than what the official viewer has. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>When will I be plowed?</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 10px;
+        }
+        #map {
+            height: 60vh;
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px auto;
+            background-color: #ffffff;
+        }
+        th, td {
+            text-align: left;
+            padding: 6px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        tr:hover {background-color: #f5f5f5;}
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .details-row {
+            display: none;
+            background-color: #fafafa;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-table th {
+            background-color: #636363;
+            color: #fff;
+            width: 30%;
+            padding: 4px;
+        }
+        .details-table td {
+            padding: 4px;
+        }
+        .highlight {
+            background-color: #fff8b3 !important;
+        }
+        #legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 10px 0;
+            gap: 15px;
+            font-size: 14px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #ccc;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Where My Plows At?</h1>
+    <div id="map"></div>
+    <!-- Coverage legend (no 24+ hours) -->
+    <div id="legend">
+        <div class="legend-item"><span class="legend-color" style="background-color: green;"></span>0–4&nbsp;h</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: yellow;"></span>4–8&nbsp;h</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: orange;"></span>8–16&nbsp;h</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: purple;"></span>16–24&nbsp;h</div>
+    </div>
+    <div id="tableContainer">
+        <div id="loadingMessage" class="loading">Loading fleet and coverage data… this could take up to a minute depending on server load.<br><img src="mrplow.png" /></div>
+        <table id="fleetTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Vehicle Name</th>
+                    <th>Serial Number</th>
+                    <th>VIN</th>
+                    <th>License Plate</th>
+                    <th>Device Type</th>
+                    <th>Product ID</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Speed (km/h)</th>
+                    <th>Bearing (°)</th>
+                    <th>Last Updated</th>
+                    <th>View</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([39.114053, -94.627463], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        function formatValue(value) {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'object') return '<pre>' + JSON.stringify(value, null, 2) + '</pre>';
+            return String(value);
+        }
+        function buildDetailsHTML(device) {
+            let html = '<table class="details-table">';
+            for (const key in device) {
+                if (Object.prototype.hasOwnProperty.call(device, key)) {
+                    html += '<tr><th>' + key + '</th><td>' + formatValue(device[key]) + '</td></tr>';
+                }
+            }
+            html += '</table>';
+            return html;
+        }
+        async function loadFleetData() {
+            const endpoint = 'https://publicmap-api.zenduit.com/Service/Public/GetDevices';
+            const body = { ShareId: '5db87df5be37f33cd48d4304' };
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json, text/plain, */*',
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) throw new Error('Server responded with ' + response.status);
+                const data = await response.json();
+                const devices = Array.isArray(data.result) ? data.result : Array.isArray(data) ? data : [];
+                updateMapAndTable(devices);
+            } catch (error) {
+                console.error('Failed to load fleet data:', error);
+                document.getElementById('loadingMessage').textContent = 'Error loading data.';
+            }
+        }
+        async function loadCoverage() {
+            const endpoint = 'https://publicmap-api.zenduit.com/Service/Public/GetCompliance';
+            const body = { ShareId: '5db87df5be37f33cd48d4304' };
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json, text/plain, */*',
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) throw new Error('Server responded with ' + response.status);
+                const data = await response.json();
+                drawCoverageLines(data);
+            } catch (error) {
+                console.error('Failed to load coverage data:', error);
+            }
+        }
+        function drawCoverageLines(compliances) {
+            if (window.coverageLayers) {
+                window.coverageLayers.forEach(l => map.removeLayer(l));
+            }
+            window.coverageLayers = [];
+            const now = new Date();
+            compliances.forEach(item => {
+                if (!item.Coverage || item.Coverage.length === 0) return;
+                item.Coverage.forEach(poly => {
+                    const coords = [];
+                    let latestDate = null;
+                    poly.forEach(pt => {
+                        coords.push([pt.Y, pt.X]);
+                        const dt = new Date(pt.DateTime);
+                        if (!latestDate || dt > latestDate) latestDate = dt;
+                    });
+                    if (!latestDate) return;
+                    const diffHours = (now - latestDate) / (1000 * 60 * 60);
+                    if (diffHours > 24) return; // skip segments older than 24 hours
+                    let color;
+                    if (diffHours <= 4) color = 'green';
+                    else if (diffHours <= 8) color = 'yellow';
+                    else if (diffHours <= 16) color = 'orange';
+                    else color = 'purple';
+                    const line = L.polyline(coords, { color, weight: 5, opacity: 0.7 }).addTo(map);
+                    window.coverageLayers.push(line);
+                });
+            });
+        }
+        function createVehicleIcon(heading) {
+            // Simple triangular arrow rotated by heading
+            const size = 20;
+            const html = `<div style="transform: rotate(${heading}deg); width: 0; height: 0; border-left: ${size / 2}px solid transparent; border-right: ${size / 2}px solid transparent; border-bottom: ${size}px solid #ff5722;"></div>`;
+            return L.divIcon({ html, className: '', iconSize: [size, size], iconAnchor: [size / 2, size] });
+        }
+        function updateMapAndTable(devices) {
+            const tableBody = document.querySelector('#fleetTable tbody');
+            tableBody.innerHTML = '';
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('fleetTable').style.display = 'table';
+            // Remove existing markers
+            if (window.fleetMarkers) window.fleetMarkers.forEach(m => map.removeLayer(m));
+            window.fleetMarkers = [];
+            const now = new Date();
+            devices.forEach(device => {
+                const status = device.Status || device.status || device.deviceStatusInfo || {};
+                const name = device.name || device.deviceName || device.vehicleName || '';
+                const serialNumber = device.serialNumber || '';
+                const vin = device.vehicleIdentificationNumber || device.engineVehicleIdentificationNumber || '';
+                const licensePlate = device.licensePlate || '';
+                const deviceType = device.deviceType || '';
+                const productId = device.productId || '';
+                const latitude = status.latitude;
+                const longitude = status.longitude;
+                const speed = status.speed;
+                const bearing = status.bearing;
+                const dateTime = status.dateTime || device.dateTime || device.lastUpdate || '';
+                // Skip devices older than 3 months (~90 days)
+                if (dateTime) {
+                    try {
+                        const dt = new Date(dateTime);
+                        const diffMs = now - dt;
+                        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                        if (diffDays > 90) return;
+                    } catch { /* ignore parse errors */ }
+                }
+                let speedDisplay = '';
+                if (typeof speed === 'number') {
+                    const spd = speed < 10 ? speed * 3.6 : speed;
+                    speedDisplay = spd.toFixed(1);
+                }
+                const bearingDisplay = typeof bearing === 'number' ? bearing.toFixed(1) : '';
+                let updatedDisplay = '';
+                if (dateTime) {
+                    try {
+                        updatedDisplay = new Date(dateTime).toLocaleString();
+                    } catch {
+                        updatedDisplay = dateTime;
+                    }
+                }
+                // Create row
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${name}</td>
+                    <td>${serialNumber}</td>
+                    <td>${vin}</td>
+                    <td>${licensePlate}</td>
+                    <td>${deviceType}</td>
+                    <td>${productId}</td>
+                    <td>${latitude != null ? latitude.toFixed(5) : ''}</td>
+                    <td>${longitude != null ? longitude.toFixed(5) : ''}</td>
+                    <td>${speedDisplay}</td>
+                    <td>${bearingDisplay}</td>
+                    <td>${updatedDisplay}</td>
+                    <td><button type="button" class="view-map">View</button></td>
+                    <td><button type="button" class="details-toggle">Show Details</button></td>
+                `;
+                tableBody.appendChild(row);
+                const detailsRow = document.createElement('tr');
+                detailsRow.className = 'details-row';
+                const detailsCell = document.createElement('td');
+                detailsCell.colSpan = 13;
+                detailsCell.innerHTML = buildDetailsHTML(device);
+                detailsRow.appendChild(detailsCell);
+                tableBody.appendChild(detailsRow);
+                const toggleButton = row.querySelector('.details-toggle');
+                toggleButton.addEventListener('click', () => {
+                    const hidden = detailsRow.style.display === 'none' || detailsRow.style.display === '';
+                    detailsRow.style.display = hidden ? 'table-row' : 'none';
+                    toggleButton.textContent = hidden ? 'Hide Details' : 'Show Details';
+                });
+                // View on map button
+                const viewButton = row.querySelector('.view-map');
+                viewButton.addEventListener('click', () => {
+                    if (latitude != null && longitude != null) {
+                        map.setView([latitude, longitude], 16);
+                        document.querySelectorAll('#fleetTable tbody tr').forEach(tr => tr.classList.remove('highlight'));
+                        row.classList.add('highlight');
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+                // Add marker
+                if (latitude != null && longitude != null) {
+                    const heading = typeof bearing === 'number' ? bearing : 0;
+                    const icon = createVehicleIcon(heading);
+                    const marker = L.marker([latitude, longitude], { icon }).addTo(map);
+                    marker.on('click', () => {
+                        document.querySelectorAll('#fleetTable tbody tr').forEach(tr => tr.classList.remove('highlight'));
+                        row.classList.add('highlight');
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+                    window.fleetMarkers.push(marker);
+                }
+            });
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFleetData();
+            loadCoverage();
+        });
+    </script>
+</body>
+</html>
