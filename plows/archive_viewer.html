@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snowplow Weekend Replay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        :root {
+            --brand: #0b4f6c;
+            --accent: #ff7043;
+            --bg: #f6f7fb;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Manrope", "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, #f6f7fb 0%, #e5eef6 100%);
+            color: #1e2330;
+        }
+        header {
+            padding: 16px;
+            background: white;
+            border-bottom: 1px solid #d9dfeb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        h1 {
+            margin: 0 0 6px 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--brand);
+        }
+        .subhead { color: #5b6275; font-size: 14px; }
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        button, select, input[type="range"], label {
+            font-family: inherit;
+        }
+        button {
+            background: var(--brand);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(11,79,108,0.25);
+        }
+        button.secondary { background: #e5eef6; color: #1e2330; box-shadow: none; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        select {
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid #ccd3e1;
+            background: white;
+        }
+        #timeSlider {
+            flex: 1;
+            min-width: 200px;
+        }
+        #map {
+            height: 70vh;
+            width: 100%;
+        }
+        #legend {
+            display: flex;
+            gap: 12px;
+            padding: 12px 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .legend-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid #cfd5e3;
+        }
+        #stats {
+            padding: 12px 16px;
+            background: white;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            border-top: 1px solid #d9dfeb;
+        }
+        .pill {
+            background: #e5eef6;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #1e2330;
+        }
+        .callout {
+            padding: 10px 12px;
+            background: #fff5e6;
+            border: 1px solid #ffd699;
+            border-radius: 8px;
+            color: #8a5a00;
+            font-size: 13px;
+        }
+        @media (max-width: 768px) {
+            #controls { flex-direction: column; align-items: stretch; }
+            button { width: 100%; }
+            #timeSlider { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Snowplow Weekend Replay</h1>
+        <div class="subhead">Recorded passes and vehicle positions from the Jan 23–26, 2026 storm.</div>
+        <div id="controls">
+            <button id="playPause">Play</button>
+            <input type="range" id="timeSlider" min="0" max="1" value="0" step="60">
+            <span id="timeLabel" class="pill">Loading…</span>
+            <select id="speedSelect" title="Playback speed (simulation minutes per real second)">
+                <option value="120">2 min / sec</option>
+                <option value="300" selected>5 min / sec</option>
+                <option value="600">10 min / sec</option>
+                <option value="1800">30 min / sec</option>
+            </select>
+            <label style="display: none;"><input type="checkbox" id="coverageToggle" hidden> Show coverage</label>
+            <button class="secondary" id="jumpStart">Jump to start</button>
+            <button class="secondary" id="jumpEnd">Jump to end</button>
+        </div>
+    </header>
+    <div id="map"></div>
+    <div id="stats">
+        <div class="pill">Active vehicles: <span id="activeCount">0</span></div>
+        <div class="pill">Window: <span id="windowRange">–</span></div>
+        <div class="pill">Duration: <span id="duration">–</span></div>
+        <div id="status" class="callout" style="display:none;"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const DATA_PATH = './archive_data/';
+        const map = L.map('map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let vehicles = [];
+        let coverageSegments = [];
+        let baseTs = 0;
+        let maxRel = 0;
+        let currentRel = 0;
+        let playing = false;
+        let playRate = 300; // simulation seconds per real second
+        let rafId = null;
+        const markers = new Map();
+        let coverageLayers = [];
+        let coverageTimer = null;
+        let lastTick = null;
+
+        const playPauseBtn = document.getElementById('playPause');
+        const timeSlider = document.getElementById('timeSlider');
+        const timeLabel = document.getElementById('timeLabel');
+        const speedSelect = document.getElementById('speedSelect');
+        const coverageToggle = document.getElementById('coverageToggle');
+        const activeCountEl = document.getElementById('activeCount');
+        const windowRangeEl = document.getElementById('windowRange');
+        const durationEl = document.getElementById('duration');
+        const statusEl = document.getElementById('status');
+
+        function fmtDate(relSeconds) {
+            const d = new Date((baseTs + relSeconds) * 1000);
+            return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+        }
+
+        function formatDuration(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return `${h}h ${m}m`;
+        }
+
+        function createMarker() {
+            return L.circleMarker([0, 0], {
+                radius: 6,
+                color: '#0b4f6c',
+                weight: 2,
+                fillColor: '#ff7043',
+                fillOpacity: 0.9,
+            }).addTo(map);
+        }
+
+        const MAX_INTERP_GAP = 45 * 60; // seconds; beyond this we don't interpolate to avoid teleporting
+
+        function interpPoint(track, t) {
+            if (!track.length || t < track[0][0] || t > track[track.length - 1][0]) return null;
+
+            // Binary search for the last point at or before t
+            let lo = 0, hi = track.length - 1, idx = 0;
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                if (track[mid][0] <= t) { idx = mid; lo = mid + 1; }
+                else { hi = mid - 1; }
+            }
+
+            const prev = track[idx];
+            if (prev[0] === t || idx === track.length - 1) return prev;
+
+            const next = track[idx + 1];
+            const gap = next[0] - prev[0];
+            if (gap <= 0 || gap > MAX_INTERP_GAP) return prev; // don't bridge huge gaps
+
+            const ratio = (t - prev[0]) / gap;
+            const lat = prev[1] + (next[1] - prev[1]) * ratio;
+            const lon = prev[2] + (next[2] - prev[2]) * ratio;
+
+            let speed = prev[3];
+            if (prev[3] != null && next[3] != null) {
+                speed = prev[3] + (next[3] - prev[3]) * ratio;
+            } else if (prev[3] == null) {
+                speed = next[3];
+            }
+
+            let bearing = prev[4];
+            if (prev[4] != null && next[4] != null) {
+                // Shortest-path interpolation for angles
+                const diff = ((next[4] - prev[4] + 540) % 360) - 180;
+                bearing = (prev[4] + diff * ratio + 360) % 360;
+            } else if (prev[4] == null) {
+                bearing = next[4];
+            }
+
+            return [t, lat, lon, speed, bearing];
+        }
+
+        function updateVehicles(timeSec) {
+            const seen = new Set();
+            let active = 0;
+            vehicles.forEach(v => {
+                const pt = interpPoint(v.track, timeSec);
+                const marker = markers.get(v.id) || (() => {
+                    const m = createMarker();
+                    markers.set(v.id, m);
+                    return m;
+                })();
+
+                if (!pt) {
+                    marker.setStyle({ opacity: 0, fillOpacity: 0 });
+                    return;
+                }
+
+                active += 1;
+                seen.add(v.id);
+                const [_, lat, lon, speed, bearing] = pt;
+                marker.setLatLng([lat, lon]);
+                marker.setStyle({ opacity: 0.9, fillOpacity: 0.9 });
+                const humanSpeed = speed != null ? `${speed.toFixed(1)} km/h` : 'n/a';
+                marker.bindPopup(`<strong>${v.name || v.id}</strong><br>${fmtDate(pt[0])}<br>Speed ${humanSpeed}${bearing != null ? `<br>Bearing ${bearing.toFixed(0)}°` : ''}`);
+            });
+            activeCountEl.textContent = active;
+            // Hide markers for vehicles without data yet.
+            markers.forEach((marker, id) => {
+                if (!seen.has(id)) marker.setStyle({ opacity: 0, fillOpacity: 0 });
+            });
+        }
+
+        function coverageColor(ageHours) {
+            if (ageHours <= 4) return 'green';
+            if (ageHours <= 8) return 'yellow';
+            if (ageHours <= 16) return 'orange';
+            return 'purple';
+        }
+
+        function renderCoverage(timeSec) {
+            coverageLayers.forEach(l => map.removeLayer(l));
+            coverageLayers = [];
+            coverageSegments.forEach(seg => {
+                const pts = [];
+                for (const p of seg.points) {
+                    if (p[0] > timeSec) break;
+                    pts.push(p);
+                }
+                if (pts.length < 2) return;
+                const last = pts[pts.length - 1];
+                const ageHours = (timeSec - last[0]) / 3600;
+                if (ageHours > 24) return; // keep it responsive: last 24h only
+                const latlngs = pts.map(p => [p[1], p[2]]);
+                const line = L.polyline(latlngs, { color: coverageColor(ageHours), weight: 4, opacity: 0.7 }).addTo(map);
+                coverageLayers.push(line);
+            });
+        }
+
+        function queueCoverage(timeSec) {
+            if (!coverageToggle.checked) return;
+            if (coverageTimer) {
+                clearTimeout(coverageTimer);
+            }
+            coverageTimer = setTimeout(() => {
+                renderCoverage(timeSec);
+                coverageTimer = null;
+            }, 250);
+        }
+
+        function setTime(newRel) {
+            currentRel = Math.max(0, Math.min(newRel, maxRel));
+            timeSlider.value = currentRel;
+            timeLabel.textContent = fmtDate(currentRel);
+            updateVehicles(currentRel);
+            queueCoverage(currentRel);
+            if (currentRel >= maxRel && playing) {
+                togglePlay(false);
+            }
+        }
+
+        function tick(now) {
+            if (!playing) return;
+            if (!lastTick) lastTick = now;
+            const delta = (now - lastTick) / 1000;
+            lastTick = now;
+            const increment = delta * playRate;
+            setTime(currentRel + increment);
+            rafId = requestAnimationFrame(tick);
+        }
+
+        function togglePlay(forceState) {
+            const next = forceState !== undefined ? forceState : !playing;
+            playing = next;
+            playPauseBtn.textContent = playing ? "Pause" : "Play";
+            if (playing) {
+                lastTick = null;
+                rafId = requestAnimationFrame(tick);
+                statusEl.style.display = 'none';
+            } else if (rafId) {
+                cancelAnimationFrame(rafId);
+            }
+        }
+
+        function fitInitialView() {
+            let minLat = 90, minLon = 180, maxLat = -90, maxLon = -180;
+            vehicles.forEach(v => {
+                v.track.forEach(p => {
+                    minLat = Math.min(minLat, p[1]);
+                    maxLat = Math.max(maxLat, p[1]);
+                    minLon = Math.min(minLon, p[2]);
+                    maxLon = Math.max(maxLon, p[2]);
+                });
+            });
+            if (minLat === 90) {
+                map.setView([39.114053, -94.627463], 11);
+            } else {
+                map.fitBounds([[minLat, minLon], [maxLat, maxLon]]);
+            }
+        }
+
+        function init([vehiclesPayload, coveragePayload]) {
+            vehicles = vehiclesPayload.vehicles;
+            coverageSegments = coveragePayload.segments;
+            baseTs = vehiclesPayload.meta.min_ts;
+            maxRel = vehiclesPayload.meta.max_ts - vehiclesPayload.meta.min_ts;
+            timeSlider.max = maxRel;
+            timeSlider.step = 60; // 1 minute granularity
+            playRate = Number(speedSelect.value);
+
+            windowRangeEl.textContent = `${fmtDate(0)} → ${fmtDate(maxRel)}`;
+            durationEl.textContent = formatDuration(maxRel);
+            fitInitialView();
+            setTime(0);
+        }
+
+        function loadData() {
+            return Promise.all([
+                fetch(`${DATA_PATH}vehicles_compact.json`).then(r => r.json()),
+                fetch(`${DATA_PATH}coverage_compact.json`).then(r => r.json()),
+            ]);
+        }
+
+        function showError(msg) {
+            statusEl.textContent = msg;
+            statusEl.style.display = 'block';
+        }
+
+        playPauseBtn.addEventListener('click', () => togglePlay());
+        speedSelect.addEventListener('change', () => {
+            playRate = Number(speedSelect.value);
+        });
+        timeSlider.addEventListener('input', e => {
+            togglePlay(false);
+            setTime(Number(e.target.value));
+        });
+        coverageToggle.addEventListener('change', () => {
+            coverageLayers.forEach(l => map.removeLayer(l));
+            coverageLayers = [];
+            if (coverageToggle.checked) queueCoverage(currentRel);
+        });
+        document.getElementById('jumpStart').addEventListener('click', () => { togglePlay(false); setTime(0); });
+        document.getElementById('jumpEnd').addEventListener('click', () => { togglePlay(false); setTime(maxRel); });
+
+        loadData()
+            .then(init)
+            .catch(err => {
+                console.error(err);
+                showError('Failed to load archive data');
+            });
+    </script>
+</body>
+</html>
